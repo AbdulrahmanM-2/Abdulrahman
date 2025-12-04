@@ -1,1 +1,124 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>Hyperwallet Integration Documentation</title>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&display=swap" rel="stylesheet">
+  <style>
+    :root {
+      --hyperwallet-blue: #00bcd4;
+      --hyperwallet-dark: #003c4a;
+      --hyperwallet-light: #e0f7fa;
+      --hyperwallet-accent: #0097a7;
+    }
+    body {font-family: 'Inter', Arial, system-ui; background:#f1f5f9; color:#0f172a; margin:0; padding:0;}
+    header {background: var(--hyperwallet-blue); color: white; padding: 16px; text-align:center;}
+    nav {display:flex; gap:16px; justify-content:center; background: var(--hyperwallet-dark); padding:12px;}
+    nav a {color:white; text-decoration:none; font-weight:600;}
+    .container {max-width:1000px; margin:0 auto; padding:24px;}
+    .card {background:white; padding:24px; border-radius:12px; box-shadow:0 6px 18px rgba(0,0,0,0.08); margin-bottom:24px;}
+    h1,h2,h3 {color: var(--hyperwallet-dark);}
+    pre {background: var(--hyperwallet-dark); color:white; padding:16px; border-radius:8px; overflow:auto;}
+    code {background: var(--hyperwallet-light); padding:2px 6px; border-radius:6px;}
+    ul,ol {line-height:1.7;}
+    .diagram {text-align:center; margin:24px 0;}
+    footer {text-align:center; color:#475569; padding:16px;}
+  </style>
+  <script>
+    function toggleSection(id) {
+      const sec = document.getElementById(id);
+      if(sec.style.display === 'none') sec.style.display = 'block';
+      else sec.style.display = 'none';
+    }
+  </script>
+</head>
+<body>
+<header>
+  <h1>Hyperwallet Integration & Encryption Docs</h1>
+</header>
+<nav>
+  <a href="#home" onclick="toggleSection('home')">Home</a>
+  <a href="#github" onclick="toggleSection('github')">GitHub Pages</a>
+  <a href="#jwks" onclick="toggleSection('jwks')">JWKS Hosting</a>
+  <a href="#encryption" onclick="toggleSection('encryption')">Encryption</a>
+  <a href="#production" onclick="toggleSection('production')">Production</a>
+</nav>
+<div class="container">
 
+<div id="home" class="card">
+  <h2>Home</h2>
+  <p>Welcome to the Hyperwallet integration documentation website. Navigate using the top menu.</p>
+</div>
+
+<div id="github" class="card" style="display:none">
+  <h2>GitHub Pages Hosting</h2>
+  <ol>
+    <li>Create repository on GitHub.</li>
+    <li>Add <code>index.html</code>, <code>jwks.json</code>, and assets.</li>
+    <li>Enable GitHub Pages in Settings → Pages.</li>
+    <li>Publish at <code>https://&lt;username&gt;.github.io/&lt;repo&gt;/</code>.</li>
+  </ol>
+  <div class="diagram">
+    <img src="assets/github_pages_flow.png" alt="GitHub Pages Flow Diagram" width="80%">
+  </div>
+</div>
+
+<div id="jwks" class="card" style="display:none">
+  <h2>JWKS Public Key Hosting</h2>
+  <p>Place your JWKS in <code>jwks.json</code> and ensure HTTPS access.</p>
+  <pre>{
+  "keys": [
+    {"kty":"RSA","kid":"prod-key-1","use":"enc","alg":"RSA-OAEP-256","n":"...","e":"AQAB"}
+  ]
+}</pre>
+  <div class="diagram">
+    <img src="assets/jwks_flow.png" alt="JWKS Flow Diagram" width="80%">
+  </div>
+</div>
+
+<div id="encryption" class="card" style="display:none">
+  <h2>Payload Encryption</h2>
+  <ul>
+    <li>RSA-OAEP-256 for CEK encryption</li>
+    <li>AES-256-GCM for payload</li>
+    <li>JWE Compact Serialization</li>
+  </ul>
+  <h3>Encryption Flow</h3>
+  <div class="diagram">
+    <img src="assets/encryption_flow.png" alt="Encryption Flow Diagram" width="80%">
+  </div>
+  <pre>from jwcrypto import jwk, jwe
+from jwcrypto.common import json_encode
+
+with open('jwks.json') as f:
+    jwks = json.load(f)
+recipient_key = jwk.JWK.from_json(json.dumps(jwks['keys'][0]))
+
+payload = b'{"example":"hello"}'
+protected = {'alg':'RSA-OAEP-256','enc':'A256GCM','kid':recipient_key.get('kid')}
+jwetoken = jwe.JWE(payload, json_encode(protected))
+jwetoken.add_recipient(recipient_key)
+compact = jwetoken.serialize(compact=True)</pre>
+</div>
+
+<div id="production" class="card" style="display:none">
+  <h2>Production Access</h2>
+  <ol>
+    <li>Share JWKS endpoint with Hyperwallet.</li>
+    <li>Ensure <code>kid</code> matches encrypted payload header.</li>
+    <li>Encrypt requests as JWE.</li>
+    <li>Sign requests with your private key if needed.</li>
+    <li>Send payloads to <code>https://api.paylution.com/rest/v4</code></li>
+  </ol>
+  <div class="diagram">
+    <img src="assets/production_flow.png" alt="Production Flow Diagram" width="80%">
+  </div>
+</div>
+
+<footer>
+  Hyperwallet Integration Documentation &copy; 2025
+</footer>
+</div>
+</body>
+</html>
