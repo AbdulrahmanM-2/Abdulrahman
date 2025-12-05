@@ -1,0 +1,46 @@
+JWKS_FLOW ASCII DIAGRAM
+
+┌───────────────────────────────┐
+│           JWT Received        │
+│  (Header contains `kid`)      │
+└───────────────┬───────────────┘
+                │
+                ▼
+┌──────────────────────────────────────────────┐
+│ Check Local JWKS Cache                       │
+│ • Is JWKS cached?                            │
+│ • Does cached JWKS contain matching `kid`?    │
+└───────────────┬───────────────┬──────────────┘
+                │Yes            │No
+                │               ▼
+                │     ┌─────────────────────────┐
+                │     │  Fetch JWKS from        │
+                │     │  https://…/jwks.json    │
+                │     └─────────────┬───────────┘
+                │                   │
+                │                   ▼
+                │     ┌─────────────────────────┐
+                │     │     Parse JWKS JSON     │
+                │     │ Extract all JWK entries │
+                │     └─────────────┬───────────┘
+                │                   │
+                ▼                   │
+┌──────────────────────────────┐     │
+│ Select Key by `kid`          │◄────┘
+│ • Find key in JWKS whose     │
+│   "kid" matches JWT header   │
+└───────────────┬──────────────┘
+                │
+                ▼
+┌──────────────────────────────────────┐
+│   Verify / Decrypt the JWT           │
+│ • JWS → Verify signature using key    │
+│ • JWE → Decrypt CEK + decrypt token   │
+└───────────────┬──────────────────────┘
+                │
+                ▼
+┌──────────────────────────────────────┐
+│   Optional: Cache JWKS               │
+│ • Store JWKS until TTL or cache      │
+│   control headers expire             │
+└──────────────────────────────────────┘
