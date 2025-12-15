@@ -47,6 +47,122 @@ HTTPS Transport</code></pre>
 </section>
 
 <section id="hateoas">
+<h2>HATEOAS (Hypermedia as the Engine of Application State)</h2>
+<p>
+HATEOAS allows clients to <strong>dynamically navigate and interact with the API</strong> through links provided in responses, without hard-coding URLs or application logic.
+</p>
+
+<h3>How It Works</h3>
+<p>API responses may include a <code>links</code> array. Each link object typically contains:</p>
+<table>
+  <tr><th>Attribute</th><th>Description</th></tr>
+  <tr><td><code>params.rel</code></td><td>Relationship of the link to the resource (e.g., <code>self</code>, <code>update</code>, <code>delete</code>)</td></tr>
+  <tr><td><code>href</code></td><td>Full URL to access or interact with the resource</td></tr>
+</table>
+
+<p>Mandatory Links:</p>
+<ul>
+  <li>All <code>POST</code>, <code>PUT</code>, and <code>GET</code> calls include a <code>self</code> link.</li>
+  <li><code>GET</code> calls returning lists may include pagination links (<code>next</code>, <code>prev</code>, <code>first</code>, <code>last</code>).</li>
+</ul>
+
+<h3>Example Response</h3>
+<pre><code class="language-json">{
+  "links": [
+    {
+      "params": {
+        "rel": "self"
+      },
+      "href": "https://uat-api.paylution.com/rest/v4/users/usr-b86ab524-2787-46e2-b536-5a70e37349f7"
+    }
+  ]
+}</code></pre>
+
+<h3>Example with Multiple Links</h3>
+<pre><code class="language-json">{
+  "links": [
+    { "params": { "rel": "self" }, "href": "https://api.example.com/v4/users?page=1" },
+    { "params": { "rel": "next" }, "href": "https://api.example.com/v4/users?page=2" },
+    { "params": { "rel": "update" }, "href": "https://api.example.com/v4/users/123" },
+    { "params": { "rel": "delete" }, "href": "https://api.example.com/v4/users/123" }
+  ]
+}</code></pre>
+
+<h3>Diagram</h3>
+<p>Example HATEOAS flow for a single resource:</p>
+<svg xmlns="http://www.w3.org/2000/svg" width="100%" height="180" viewBox="0 0 800 180">
+<g>
+<rect x="50" y="20" width="150" height="40" fill="#003366" stroke="#000"/>
+<text x="125" y="45" fill="#fff" font-size="14" text-anchor="middle">Client</text>
+<rect x="600" y="20" width="150" height="40" fill="#003366" stroke="#000"/>
+<text x="675" y="45" fill="#fff" font-size="14" text-anchor="middle">API Server</text>
+<line x1="200" y1="40" x2="600" y2="40" stroke="#000" stroke-width="2" marker-end="url(#arrow)"/>
+<text x="400" y="30" font-size="12" text-anchor="middle">GET /v4/users/123 (self)</text>
+<line x1="600" y1="60" x2="200" y2="60" stroke="#000" stroke-width="2" marker-end="url(#arrow)"/>
+<text x="400" y="75" font-size="12" text-anchor="middle">Response: Updated resource / pagination</text>
+</g>
+<defs>
+<marker id="arrow" markerWidth="10" markerHeight="10" refX="10" refY="5"
+orient="auto" markerUnits="strokeWidth">
+<path d="M0,0 L0,10 L10,5 z" fill="#000"/>
+</marker>
+</defs>
+</svg>
+
+<p>For more details, see the <a href="https://docs.hyperwallet.com/content/api/v4/overview/hateoas" target="_blank">Hyperwallet HATEOAS documentation</a>.</p>
+</section>
+
+<section id="try-hateoas">
+<h2>Try HATEOAS Links</h2>
+
+<div class="copy-container">
+<button onclick="copyCode(this)">Copy</button>
+<pre><code class="language-bash">curl -X GET "https://api.example.com/v4/users/123" \
+-H "Authorization: Bearer &lt;JWT&gt;" \
+-H "Content-Type: application/json"</code></pre>
+</div>
+
+<div class="copy-container">
+<button onclick="copyCode(this)">Copy</button>
+<pre><code class="language-bash">curl -X PUT "https://api.example.com/v4/users/123" \
+-H "Authorization: Bearer &lt;JWT&gt;" \
+-H "Content-Type: application/json" \
+-d '{ "status": "ACTIVE" }'</code></pre>
+</div>
+
+<div class="copy-container">
+<button onclick="copyCode(this)">Copy</button>
+<pre><code class="language-bash">curl -X DELETE "https://api.example.com/v4/users/123" \
+-H "Authorization: Bearer &lt;JWT&gt;" \
+-H "Content-Type: application/json"</code></pre>
+</div>
+
+</section>
+
+<script>
+function copyCode(button){
+  const code=button.nextElementSibling.querySelector('code').innerText;
+  navigator.clipboard.writeText(code).then(()=>{
+    button.innerText='Copied!';
+    setTimeout(()=>button.innerText='Copy',2000);
+  });
+}
+</script>
+
+</body>
+                                                                             </html><h3>Transport Security (TLS)</h3>
+<p>All endpoints are accessible only over HTTPS.</p>
+<h3>Payload Signing (JWS) & Encryption (JWE)</h3>
+<pre><code>Client Payload
+   ↓
+JWS Sign
+   ↓
+JWE Encrypt
+   ↓
+HTTPS Transport</code></pre>
+</section>
+
+<section id="hateoas">
 <h2>HATEOAS Links</h2>
 <p>Clients discover available actions dynamically through links in API responses.</p>
 
