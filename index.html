@@ -162,10 +162,6 @@ compact = jwetoken.serialize(compact=True)</pre>
   ]
 }</pre>
 
-        <h4><b>Decoded Payload</b></h4>
-        <img src="assets/decoded_payload.jpg" alt="Decoded Payload Image" width="80%"/>
-    </div>
-
     <div class="section box">
         <h4><b>Verify Signature</b></h4>
         <pre>HMACSHA512(
@@ -174,6 +170,9 @@ compact = jwetoken.serialize(compact=True)</pre>
     base64UrlEncode(payload),
     base64Decode(your-secret-base64)
 )</pre>
+    </div>
+      <h4><b>Decoded Payload</b></h4>
+        <img src="assets/decoded_payload.jpg" alt="Decoded Payload Image" width="80%"/>
     </div>
 <footer>
   Hyperwallet Integration Documentation &copy; 2025
