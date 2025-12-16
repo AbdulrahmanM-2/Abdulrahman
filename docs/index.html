@@ -1,1 +1,218 @@
 
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Hyperwallet v4 – Postman Docs</title>
+
+<!-- PrismJS for syntax highlighting -->
+<link href="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/themes/prism-tomorrow.min.css" rel="stylesheet"/>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/prism.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/components/prism-javascript.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/components/prism-bash.min.js"></script>
+
+<style>
+body { font-family: Arial, sans-serif; line-height: 1.6; margin: 0; background: #f9f9f9; color: #333; }
+header { background: #2c3e50; color: white; padding: 15px 20px; position: sticky; top: 0; z-index: 1000; }
+header nav a { color: white; margin-right: 20px; text-decoration: none; font-weight: bold; }
+header nav a:hover { text-decoration: underline; }
+h1, h2, h3 { color: #2c3e50; }
+pre { padding: 10px; overflow-x: auto; position: relative; }
+code { font-family: monospace; }
+a { color: #3498db; text-decoration: none; }
+a:hover { text-decoration: underline; }
+details { margin-bottom: 15px; background: #fff; border: 1px solid #ccc; border-radius: 6px; padding: 10px; }
+summary { font-weight: bold; cursor: pointer; }
+.copy-btn { position: absolute; top: 5px; right: 5px; background: #3498db; color: #fff; border: none; padding: 5px 10px; border-radius: 3px; cursor: pointer; font-size: 12px; }
+.copy-btn:hover { background: #2980b9; }
+section { padding: 20px; }
+</style>
+</head>
+<body>
+
+<header>
+  <h1 style="display:inline;">Hyperwallet v4 – Postman Docs</h1>
+  <nav style="float:right;">
+    <a href="#overview">Overview</a>
+    <a href="#pre-request">Pre-request Script</a>
+    <a href="#post-response">Post-response Script</a>
+    <a href="#hateoas">HATEOAS</a>
+    <a href="#newman">Newman CLI</a>
+    <a href="#compliance">Compliance</a>
+  </nav>
+</header>
+
+<section id="overview">
+<details open>
+<summary>📄 Overview</summary>
+<p>Hyperwallet requires requests and responses to be:</p>
+<ol>
+<li><strong>Signed (JWS)</strong> using your RSA private key</li>
+<li><strong>Encrypted (JWE)</strong> using Hyperwallet’s RSA public key</li>
+</ol>
+<p>This setup ensures:</p>
+<ul>
+<li>All POST and PUT requests are encrypted automatically</li>
+<li>All responses are decrypted and verified centrally</li>
+<li>Full HATEOAS link extraction for dynamic request chaining</li>
+<li>Newman CLI compatible for production and CI/CD</li>
+</ul>
+</details>
+</section>
+
+<section id="pre-request">
+<details>
+<summary>🔐 Pre-request Script</summary>
+<pre><button class="copy-btn" onclick="copyCode(this)">Copy</button><code class="language-javascript">
+// Load jsrsasign (offline)
+(function () {
+  if (typeof KJUR !== 'undefined') return;
+  const lib = pm.collectionVariables.get('JSRSASIGN_LIB');
+  if (!lib) throw new Error('JSRSASIGN_LIB missing');
+  eval(lib);
+})();
+
+// Sign + Encrypt Request
+(function signAndEncrypt() {
+  if (!pm.request.body || !pm.request.body.raw) return;
+
+  const now = Math.floor(Date.now() / 1000);
+  const privateJWK = JSON.parse(pm.environment.get('PRIVATE_JWK'));
+  const publicJWK  = JSON.parse(pm.environment.get('PUBLIC_JWK'));
+  const payload = JSON.parse(pm.request.body.raw);
+
+  const jwtPayload = {
+    ...payload,
+    iss: pm.environment.get('EXPECTED_ISS'),
+    aud: pm.environment.get('EXPECTED_AUD'),
+    iat: now,
+    exp: now + 3600,
+    jti: KJUR.crypto.Util.getRandomHexOfNbytes(16)
+  };
+
+  const signedJWT = KJUR.jws.JWS.sign(
+    'RS256',
+    JSON.stringify({ alg: 'RS256', typ: 'JWT', kid: privateJWK.kid }),
+    JSON.stringify(jwtPayload),
+    KEYUTIL.getKey(privateJWK)
+  );
+
+  const encryptedJWT = KJUR.crypto.Cipher.encrypt(
+    signedJWT,
+    KEYUTIL.getKey(publicJWK),
+    'RSAOAEP256'
+  );
+
+  pm.request.body.raw = JSON.stringify({ request: encryptedJWT });
+})();
+</code></pre>
+</details>
+</section>
+
+<section id="post-response">
+<details>
+<summary>🔑 Post-response Script</summary>
+<pre><button class="copy-btn" onclick="copyCode(this)">Copy</button><code class="language-javascript">
+// Decrypt + Verify Response
+pm.test("Encrypted response present", () => {
+  pm.expect(pm.response.text()).to.be.a('string').and.not.empty;
+});
+
+const privateJWK = JSON.parse(pm.environment.get('PRIVATE_JWK'));
+const serverJWKS = JSON.parse(pm.environment.get('SERVER_JWKS'));
+const encrypted = pm.response.text();
+
+let decryptedJWS;
+pm.test('JWE decrypted successfully', () => {
+  decryptedJWS = KJUR.crypto.Cipher.decrypt(encrypted, KEYUTIL.getKey(privateJWK), 'RSAOAEP256');
+  pm.expect(decryptedJWS).to.be.a('string');
+});
+
+const header = JSON.parse(KJUR.crypto.Util.b64utoutf8(decryptedJWS.split('.')[0]));
+pm.test('JWS header contains kid', () => { pm.expect(header.kid).to.exist; });
+
+const serverKey = serverJWKS.keys.find(k => k.use === 'sig' && k.kid === header.kid);
+pm.test('Hyperwallet signing key found', () => { pm.expect(serverKey).to.exist; });
+
+const signatureValid = KJUR.jws.JWS.verify(decryptedJWS, KEYUTIL.getKey(serverKey), ['RS256']);
+pm.test('Response signature valid', () => { pm.expect(signatureValid).to.be.true; });
+
+const payload = JSON.parse(KJUR.crypto.Util.b64utoutf8(decryptedJWS.split('.')[1]));
+const now = Math.floor(Date.now() / 1000);
+pm.test('iss valid', () => { pm.expect(payload.iss).to.eql(pm.environment.get('EXPECTED_ISS')); });
+pm.test('aud valid', () => { 
+  const expectedAud = pm.environment.get('EXPECTED_AUD'); 
+  if (Array.isArray(payload.aud)) { pm.expect(payload.aud).to.include(expectedAud); } 
+  else { pm.expect(payload.aud).to.eql(expectedAud); } 
+});
+pm.test('token not expired', () => { pm.expect(payload.exp).to.be.above(now); });
+pm.environment.set('DECRYPTED_RESPONSE', JSON.stringify(payload));
+</code></pre>
+</details>
+</section>
+
+<section id="hateoas">
+<details>
+<summary>🔗 HATEOAS Automation</summary>
+<pre><button class="copy-btn" onclick="copyCode(this)">Copy</button><code class="language-javascript">
+if (payload && payload.links && Array.isArray(payload.links)) {
+  payload.links.forEach(link => {
+    if (!link.rel || !link.href) return;
+    if (link.rel === 'self') {
+      const token = link.href.split('/').pop();
+      pm.environment.set('LAST_RESOURCE_TOKEN', token);
+    }
+    pm.environment.set(`HATEOAS_${link.rel.toUpperCase()}`, link.href);
+  });
+}
+</code></pre>
+</details>
+</section>
+
+<section id="newman">
+<details>
+<summary>🧪 Newman CLI – Production</summary>
+<pre><button class="copy-btn" onclick="copyCode(this)">Copy</button><code class="language-bash">
+npm install -g newman
+
+newman run postman/hyperwallet.postman_collection.json \
+  -e postman/production.postman_environment.json \
+  --env-var PRIVATE_JWK="$PRIVATE_JWK" \
+  --env-var PUBLIC_JWK="$PUBLIC_JWK" \
+  --env-var SERVER_JWKS="$SERVER_JWKS" \
+  --env-var EXPECTED_ISS="$EXPECTED_ISS" \
+  --env-var EXPECTED_AUD="$EXPECTED_AUD" \
+  --timeout-request 60000 \
+  --reporters cli,json \
+  --reporter-json-export newman-report.json
+</code></pre>
+</details>
+</section>
+
+<section id="compliance">
+<details>
+<summary>✅ Compliance Notes</summary>
+<ul>
+<li>Offline jsrsasign – no CDN</li>
+<li>Deterministic crypto execution</li>
+<li>Collection-level pre-request & post-response scripts</li>
+<li>HATEOAS automatic extraction</li>
+<li>Newman CLI / CI/CD ready</li>
+<li>Audit-ready logs and JSON reports</li>
+</ul>
+</details>
+</section>
+
+<script>
+function copyCode(button) {
+  const code = button.nextElementSibling;
+  navigator.clipboard.writeText(code.innerText).then(() => {
+    button.textContent = 'Copied!';
+    setTimeout(() => { button.textContent = 'Copy'; }, 2000);
+  });
+}
+</script>
+
+</body>
+  </html>
