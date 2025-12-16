@@ -116,14 +116,14 @@ orient="auto" markerUnits="strokeWidth">
 
 <div class="copy-container">
 <button onclick="copyCode(this)">Copy</button>
-<pre><code class="language-bash">curl -X GET "https://api.paylution.com/v4/users" \
+<pre><code class="language-bash">curl -X GET "https://api.paylution.com/rest/v4/users" \
 -H "Authorization: Bearer &lt;JWT&gt;" \
 -H "Content-Type: application/jose+json"</code></pre>
 </div>
 
 <div class="copy-container">
 <button onclick="copyCode(this)">Copy</button>
-<pre><code class="language-bash">curl -X PUT "https://api.paylution.com/v4/users" \
+<pre><code class="language-bash">curl -X PUT "https://api.paylution.com/rest/v4/users" \
 -H "Authorization: Bearer &lt;JWT&gt;" \
 -H "Content-Type: application/jose+json" \
 -d '{ "status": "ACTIVE" }'</code></pre>
@@ -131,7 +131,7 @@ orient="auto" markerUnits="strokeWidth">
 
 <div class="copy-container">
 <button onclick="copyCode(this)">Copy</button>
-<pre><code class="language-bash">curl -X DELETE "https://api.example.com/v4/users/123" \
+<pre><code class="language-bash">curl -X DELETE "https://api.paylution.com/rest/v4/users" \
 -H "Authorization: Bearer &lt;JWT&gt;" \
 -H "Content-Type: application/jose+json"</code></pre>
 </div>
